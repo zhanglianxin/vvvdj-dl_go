@@ -2,7 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/sclevine/agouti"
+	"math/rand"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestGetMusicNames(t *testing.T) {
@@ -21,4 +26,66 @@ func TestGetMusicNames(t *testing.T) {
 	t.Logf("%#v", i)
 	t.Logf("%#v", v)
 	t.Logf("%#v", v["Result"])
+}
+
+func TestSlice(t *testing.T) {
+	s := "ttp://t.h.vvvdj.com/face/c2/2014/11/105092-e9c425.mp4?upt=038b56911587969253&play.mp4"
+	sl := strings.SplitAfter(strings.Split(s, "?")[0], "/")
+	s = sl[len(sl)-1]
+	t.Logf("%#v", s)
+}
+
+func TestElemProp(t *testing.T) {
+	if err := chromeDriver.Start(); nil != err {
+		panic(err)
+	}
+	defer chromeDriver.Stop()
+
+	page, err := chromeDriver.NewPage(agouti.Browser("chrome"))
+	if nil != err {
+		panic(err)
+	}
+	defer page.CloseWindow()
+
+	url := "https://blog.test/"
+	if err := page.Navigate(url); nil != err {
+		panic(err)
+	}
+
+	elem := page.FindByXPath("/html/body/div/div/div[2]/a[1]")
+	src, _ := elem.Attribute("src") // ""
+	href, _ := elem.Attribute("href")
+	t.Logf("%#v\n%#v", src, href)
+}
+
+func TestChan(t *testing.T) {
+	ch := make(chan int)
+	go func() {
+		time.Sleep(5 * time.Second)
+		ch <- 1
+	}()
+	a := <-ch
+	fmt.Println(a)
+}
+
+func TestChan1(t *testing.T) {
+	rand.Seed(time.Now().UnixNano())
+	fmt.Println(rand.Intn(30))
+	ch := make(chan string)
+	fmt.Println(ch)
+	var src string
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			src = "a"
+			ch <- src
+		}
+	}()
+
+	select {
+	case <-ch:
+		fmt.Println(ch, <-ch, src, "aha")
+	case <-time.After(2 * time.Second):
+		fmt.Println(ch, "oppos")
+	}
 }

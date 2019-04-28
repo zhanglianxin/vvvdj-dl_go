@@ -19,9 +19,9 @@ type HtmlDocument struct {
 }
 
 func (hd *HtmlDocument) getContent() []byte {
-	body := makeRequest(hd.url, hd.method, hd.headers, hd.params)
-	defer (*body).Close()
-	b, err := ioutil.ReadAll(*body)
+	resp := makeRequest(hd.url, hd.method, hd.headers, hd.params)
+	defer resp.Body.Close()
+	b, err := ioutil.ReadAll(resp.Body)
 	if nil != err {
 		panic(err)
 	}
@@ -35,13 +35,13 @@ type StreamDocument struct {
 	params  map[string]string
 }
 
-func (sd *StreamDocument) getContent() *io.ReadCloser {
-	body := makeRequest(sd.url, sd.method, sd.headers, sd.params)
-	defer (*body).Close()
-	return body
+func (sd *StreamDocument) getContent() io.ReadCloser {
+	resp := makeRequest(sd.url, sd.method, sd.headers, sd.params)
+	// defer resp.Body.Close()
+	return resp.Body
 }
 
-func makeRequest(url string, method string, headers map[string]string, params map[string]string) *io.ReadCloser {
+func makeRequest(url string, method string, headers map[string]string, params map[string]string) *http.Response {
 	method = strings.ToUpper(method)
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, nil)
@@ -61,10 +61,5 @@ func makeRequest(url string, method string, headers map[string]string, params ma
 	if nil != err {
 		panic(err)
 	}
-
-	if http.StatusOK != resp.StatusCode {
-		return nil
-	} else {
-		return &resp.Body
-	}
+	return resp
 }

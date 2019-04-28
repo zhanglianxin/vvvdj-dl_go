@@ -5,7 +5,12 @@ import (
 	"flag"
 	"fmt"
 	"github.com/sclevine/agouti"
+	"github.com/sirupsen/logrus"
 	"github.com/zhanglianxin/vvvdj-dl_go/config"
+	"io"
+	"math/rand"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -22,6 +27,12 @@ var (
 )
 
 func init() {
+	logName := time.Now().Format("2006-01-02") + ".log"
+	file, err := os.OpenFile(logName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if nil != err {
+		panic(err)
+	}
+	logrus.SetOutput(file)
 	conf = config.Load("config.toml")
 	flag.StringVar(&url, "url", "http://www.vvvdj.com/radio/587.html", "The radio url")
 	flag.Parse()
@@ -50,9 +61,48 @@ func main() {
 	page.RunScript("return MUSICID;", nil, &ids) // get userAgent
 	musicNames = getMusicNames(ids)
 	for i := len(musicNames); i > 0; i-- {
-		// TODO get element
+		currentUrl, _ := page.URL()
+		audio := page.Find("audio#jp_audio_0[src]")
+		anchorNext := page.FindByXPath("//*[@id=\"ico-next\"]/a")
+		src, _ := audio.Attribute("src")
+		ch := make(chan string)
+		go func() {
+			for "" == src {
+				time.Sleep(250 * time.Millisecond)
+				src, _ = audio.Attribute("src")
+			}
+			ch <- src
+		}()
+		select {
+		case <-ch:
+			sl := strings.SplitAfter(strings.Split(src, "?")[0], "/")
+			fileName := sl[len(sl)-1]
+			fmt.Printf("fileName: %s", fileName)
+			save2File(src, fileName, "data/")
+		case <-time.After(5 * time.Second):
+			panic("get src attribute timeout")
+		}
+
+		logrus.Infof("count: %d, current: %s, src: %s", i, currentUrl, src)
+		if b, _ := anchorNext.Visible(); b {
+			anchorNext.Click()
+			url, _ := page.URL()
+			ch := make(chan int)
+			go func() {
+				for "" == url {
+					time.Sleep(250 * time.Microsecond)
+					url, _ = page.URL()
+				}
+				ch <- 1
+			}()
+			select {
+			case <-ch:
+			case <-time.After(5 * time.Second):
+				panic("not forward")
+			}
+		}
+		time.Sleep(time.Duration(randNum(1000, 3000)) * time.Microsecond)
 	}
-	fmt.Printf("%#v", musicNames)
 	time.Sleep(10 * time.Second)
 }
 
@@ -74,4 +124,34 @@ func getMusicNames(ids string) (data []interface{}) {
 		data = vv["Data"].([]interface{})
 	}
 	return data
+}
+
+func save2File(url string, name string, path string) {
+	if "" == path {
+		path = "data/"
+	}
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		os.Mkdir(path, 0622)
+	}
+	headers := map[string]string{"User-Agent": ua}
+	params := map[string]string{}
+	sd := StreamDocument{url: url, method: "GET", headers: headers, params: params}
+	content := sd.getContent()
+	defer content.Close()
+
+	out, err := os.Create(path + name)
+	defer out.Close()
+	if nil != err {
+		panic(err)
+	}
+
+	_, err = io.Copy(out, content)
+	if nil != err {
+		panic(err)
+	}
+}
+
+func randNum(min, max int) int {
+	rand.Seed(time.Now().Unix())
+	return rand.Intn(max-min) + min
 }
