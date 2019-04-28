@@ -77,7 +77,7 @@ func main() {
 		case <-ch:
 			sl := strings.SplitAfter(strings.Split(src, "?")[0], "/")
 			fileName := sl[len(sl)-1]
-			fmt.Printf("fileName: %s", fileName)
+			fmt.Println("fileName:", fileName)
 			save2File(src, fileName, "data/")
 		case <-time.After(5 * time.Second):
 			panic("get src attribute timeout")
@@ -89,7 +89,7 @@ func main() {
 			url, _ := page.URL()
 			ch := make(chan int)
 			go func() {
-				for "" == url {
+				for currentUrl == url {
 					time.Sleep(250 * time.Microsecond)
 					url, _ = page.URL()
 				}
@@ -131,7 +131,7 @@ func save2File(url string, name string, path string) {
 		path = "data/"
 	}
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		os.Mkdir(path, 0622)
+		os.Mkdir(path, 0755)
 	}
 	headers := map[string]string{"User-Agent": ua}
 	params := map[string]string{}
