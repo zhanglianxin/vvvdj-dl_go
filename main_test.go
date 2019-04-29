@@ -106,3 +106,13 @@ func TestSave2File(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckDir(t *testing.T) {
+	for i := 0; i < 4; i++ {
+		path := fmt.Sprintf("tmp/%d", time.Now().UnixNano())
+		checkDir(path)
+		time.Sleep(time.Microsecond)
+	}
+	time.Sleep(3 * time.Second)
+	// os.RemoveAll("tmp")
+}

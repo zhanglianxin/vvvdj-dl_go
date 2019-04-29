@@ -67,6 +67,9 @@ func main() {
 	le := len(musicNames)
 	var wg sync.WaitGroup
 	wg.Add(le)
+
+	path := fmt.Sprintf("data/%s/", owner)
+	checkDir(path)
 	for i := le; i > 0; i-- {
 		currentUrl, _ := page.URL()
 		audio := page.Find("audio#jp_audio_0[src]")
@@ -86,7 +89,7 @@ func main() {
 			fileName := sl[len(sl)-1]
 			go func() {
 				defer wg.Done()
-				save2File(src, fileName, fmt.Sprintf("data/%s/", owner))
+				save2File(src, fileName, path)
 			}()
 		case <-time.After(5 * time.Second):
 			panic("get src attribute timeout")
@@ -99,14 +102,14 @@ func main() {
 			ch := make(chan int)
 			go func() {
 				for currentUrl == url {
-					time.Sleep(250 * time.Microsecond)
+					time.Sleep(500 * time.Microsecond)
 					url, _ = page.URL()
 				}
 				ch <- 1
 			}()
 			select {
 			case <-ch:
-			case <-time.After(10 * time.Second):
+			case <-time.After(15 * time.Second):
 				panic("not forward")
 			}
 		}
@@ -138,9 +141,6 @@ func getMusicNames(ids string) (data []interface{}) {
 func save2File(url string, name string, path string) {
 	if "" == path {
 		path = "data/"
-	}
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		os.MkdirAll(path, 0755)
 	}
 	headers := map[string]string{"User-Agent": ua}
 	params := map[string]string{}
@@ -181,4 +181,26 @@ func md5Sum(file string) string {
 	}
 
 	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func checkDir(path string) {
+	canonical := "drwxr-xr-x"
+	info, err := os.Stat(path)
+	if nil != err {
+		if !os.IsNotExist(err) {
+			os.RemoveAll(path)
+		}
+		// Create
+		err := os.MkdirAll(path, 0755)
+		if nil != err {
+			fmt.Println("wrong")
+			logrus.Errorf("path: [%v], err: [%v]", path, err)
+		}
+		info, _ = os.Stat(path)
+	}
+	mode := info.Mode().String()
+	if canonical != mode {
+		fmt.Println(mode)
+		logrus.Errorf("path: [%v], mode: [%v]", path, mode)
+	}
 }
