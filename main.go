@@ -102,18 +102,18 @@ func main() {
 			ch := make(chan int)
 			go func() {
 				for currentUrl == url {
-					time.Sleep(500 * time.Microsecond)
+					time.Sleep(500 * time.Millisecond)
 					url, _ = page.URL()
 				}
 				ch <- 1
 			}()
 			select {
 			case <-ch:
-			case <-time.After(15 * time.Second):
+			case <-time.After(10 * time.Second):
 				panic("not forward")
 			}
 		}
-		time.Sleep(time.Duration(randNum(1000, 3000)) * time.Microsecond)
+		time.Sleep(time.Duration(randNum(1000, 3000)) * time.Millisecond)
 	}
 	wg.Wait()
 }
