@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -60,7 +62,12 @@ func main() {
 	var ids string
 	page.RunScript("return MUSICID;", nil, &ids) // get userAgent
 	musicNames = getMusicNames(ids)
-	for i := len(musicNames); i > 0; i-- {
+	sl := strings.SplitAfter(strings.Split(url, ".html")[0], "/")
+	owner := sl[len(sl)-1]
+	le := len(musicNames)
+	var wg sync.WaitGroup
+	wg.Add(le)
+	for i := le; i > 0; i-- {
 		currentUrl, _ := page.URL()
 		audio := page.Find("audio#jp_audio_0[src]")
 		anchorNext := page.FindByXPath("//*[@id=\"ico-next\"]/a")
@@ -77,8 +84,10 @@ func main() {
 		case <-ch:
 			sl := strings.SplitAfter(strings.Split(src, "?")[0], "/")
 			fileName := sl[len(sl)-1]
-			fmt.Println("fileName:", fileName)
-			save2File(src, fileName, "data/")
+			go func() {
+				defer wg.Done()
+				save2File(src, fileName, fmt.Sprintf("data/%s/", owner))
+			}()
 		case <-time.After(5 * time.Second):
 			panic("get src attribute timeout")
 		}
@@ -97,13 +106,13 @@ func main() {
 			}()
 			select {
 			case <-ch:
-			case <-time.After(5 * time.Second):
+			case <-time.After(10 * time.Second):
 				panic("not forward")
 			}
 		}
 		time.Sleep(time.Duration(randNum(1000, 3000)) * time.Microsecond)
 	}
-	time.Sleep(10 * time.Second)
+	wg.Wait()
 }
 
 func getMusicNames(ids string) (data []interface{}) {
@@ -131,7 +140,7 @@ func save2File(url string, name string, path string) {
 		path = "data/"
 	}
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		os.Mkdir(path, 0755)
+		os.MkdirAll(path, 0755)
 	}
 	headers := map[string]string{"User-Agent": ua}
 	params := map[string]string{}
@@ -149,9 +158,25 @@ func save2File(url string, name string, path string) {
 	if nil != err {
 		panic(err)
 	}
+	fmt.Println("fileName:", name)
 }
 
 func randNum(min, max int) int {
 	rand.Seed(time.Now().Unix())
 	return rand.Intn(max-min) + min
+}
+
+func md5Sum(file string) string {
+	f, err := os.Open(file)
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	defer f.Close()
+
+	h := md5.New()
+	if _, err := io.Copy(h, f); err != nil {
+		logrus.Fatal(err)
+	}
+
+	return fmt.Sprintf("%x", h.Sum(nil))
 }

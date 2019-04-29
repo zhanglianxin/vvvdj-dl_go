@@ -89,3 +89,20 @@ func TestChan1(t *testing.T) {
 		fmt.Println(ch, "oppos")
 	}
 }
+
+func TestSave2File(t *testing.T) {
+	mocks := []struct {
+		params   map[string]string
+		expected string
+	}{
+		{map[string]string{"url": "http://t.h.vvvdj.com/face/c2/2018/04/159717-7ec72a.mp4", "name": "159717-7ec72a.mp4", "path": "data/3454/"}, "f6221a402f39abd0e586d77073ca21af"},
+	}
+
+	for i := range mocks {
+		save2File(mocks[i].params["url"], mocks[i].params["name"], mocks[i].params["path"])
+		sum := md5Sum(mocks[i].params["path"]+mocks[i].params["name"])
+		if mocks[i].expected != sum {
+			t.Errorf("expected: [%v], \nactually: [%v]", mocks[i].expected, sum)
+		}
+	}
+}

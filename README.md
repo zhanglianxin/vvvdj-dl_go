@@ -5,3 +5,4 @@ A Go port of [vvvdj-dl](https://github.com/zhanglianxin/vvvdj-dl).
 ## TODO
 
 - [ ] Refactor (to be elegant)
+- [ ] Non-block I/O

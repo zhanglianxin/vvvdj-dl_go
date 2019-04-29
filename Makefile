@@ -4,6 +4,8 @@ ARCH := $(shell go env GOARCH)
 GOPATH := $(shell go env GOPATH)
 GOBIN := $(GOPATH)/bin
 
+default: build
+
 get-deps:
 	dep ensure
 
@@ -16,5 +18,3 @@ build:
 
 clean:
 	rm -fr data/
-
-.PHONY: cp-config build
