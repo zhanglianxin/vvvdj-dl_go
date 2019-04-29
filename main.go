@@ -154,11 +154,13 @@ func save2File(url string, name string, path string) {
 		panic(err)
 	}
 
-	_, err = io.Copy(out, content)
+	written, err := io.Copy(out, content)
 	if nil != err {
-		panic(err)
+		logrus.Errorf("written: [%v], err: [%v]", written, err.Error())
+		// panic(err)
 	}
-	fmt.Println("fileName:", name)
+	logrus.Infof("file: [%v], written: [%d]", out.Name(), written)
+	fmt.Println("fileName:", out.Name(), "size:", written)
 }
 
 func randNum(min, max int) int {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/sirupsen/logrus"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -38,6 +39,7 @@ type StreamDocument struct {
 func (sd *StreamDocument) getContent() io.ReadCloser {
 	resp := makeRequest(sd.url, sd.method, sd.headers, sd.params)
 	// defer resp.Body.Close()
+	logrus.Infof("url: [%v], length: [%v]", sd.url, resp.ContentLength)
 	return resp.Body
 }
 
