@@ -1,15 +1,15 @@
 package radio
 
 import (
-	"fmt"
-	"github.com/zhanglianxin/vvvdj-dl_go_v2/my-request"
-	"github.com/PuerkitoBio/goquery"
-	"github.com/sirupsen/logrus"
-	"github.com/zhanglianxin/vvvdj-dl_go_v2/myotto"
-	"strings"
-	"io"
 	"bufio"
 	"encoding/json"
+	"fmt"
+	"github.com/PuerkitoBio/goquery"
+	"github.com/sirupsen/logrus"
+	"github.com/zhanglianxin/vvvdj-dl_go/my-request"
+	"github.com/zhanglianxin/vvvdj-dl_go/myotto"
+	"io"
+	"strings"
 )
 
 type Radio struct {

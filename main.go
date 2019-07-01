@@ -1,11 +1,11 @@
 package main
 
 import (
-	"time"
-	"github.com/zhanglianxin/vvvdj-dl_go_v2/config"
-	"runtime"
 	"flag"
 	"fmt"
+	"github.com/zhanglianxin/vvvdj-dl_go/config"
+	"runtime"
+	"time"
 )
 
 var (

@@ -21,7 +21,8 @@
 config.toml
 
 # Binary
-vvvdj-dl_go_v2*
+vvvdj-dl_go*
+vvvdj-dl_*
 
 // Dep
 vendor
