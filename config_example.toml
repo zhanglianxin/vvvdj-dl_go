@@ -1,0 +1,5 @@
+[app]
+    [app.log]
+        dir = "logs"
+	[app.data]
+		dir = "data"
