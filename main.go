@@ -4,14 +4,14 @@ import (
 	"flag"
 	"fmt"
 	"github.com/zhanglianxin/vvvdj-dl_go/config"
+	"github.com/zhanglianxin/vvvdj-dl_go/radio"
 	"runtime"
 	"time"
 )
 
 var (
-	start    time.Time
-	radioUrl string
-	tmpDir   = "tmp"
+	start   time.Time
+	radioId string
 )
 
 func init() {
@@ -21,17 +21,19 @@ func init() {
 	config.SetLog(start)
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	flag.StringVar(&radioUrl, "radioUrl", "", "The radio url")
+	flag.StringVar(&radioId, "radioId", "", "The radio id")
 	flag.Parse()
 }
 
 func main() {
 	dataDir := config.Conf.App.Data.Dir
-
-	if "" == radioUrl {
+	if "" == radioId {
 		fmt.Println("params error")
 		return
 	}
 
-	fmt.Println(dataDir)
+	r := radio.NewRadio(radioId)
+	r.GetPlayUrls()
+	rdl := radio.NewRadioDl()
+	rdl.Download(r, dataDir)
 }

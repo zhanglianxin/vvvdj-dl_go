@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/sirupsen/logrus"
+	"github.com/zhanglianxin/vvvdj-dl_go/utils"
 	"os"
 	"time"
 )
@@ -36,6 +37,8 @@ func SetLog(t time.Time) {
 	if nil == Conf {
 		panic("Please load Conf file first!!")
 	}
+
+	utils.CheckDir(Conf.App.Log.Dir)
 	logName := fmt.Sprintf("%s/%s.log", Conf.App.Log.Dir, t.Format("2006-01-02"))
 	file, err := os.OpenFile(logName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if nil != err {

@@ -7,22 +7,23 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/sirupsen/logrus"
 	"github.com/zhanglianxin/vvvdj-dl_go/my-request"
-	"github.com/zhanglianxin/vvvdj-dl_go/myotto"
 	"io"
 	"strings"
+	"sync"
 )
 
 type Radio struct {
-	host      string // host
-	radioId   string // radio id
-	musicUrl  string // current music url
-	playUrls  map[string]string
-	playingId string            // current music id
-	musicIds  string            // music ids
-	apsvr     string            // t.h
-	playUrl   string            // current music src
-	m4a       string            // "http://" + apsvr + ".vvvdj.com/face/" + file + ".mp4"
-	source    *goquery.Document // current music page source
+	host       string // host
+	radioId    string // radio id
+	musicUrl   string // current music url
+	playUrls   map[string]string
+	musicNames map[string]string
+	playingId  string            // current music id
+	musicIds   string            // music ids
+	apsvr      string            // t.h
+	playUrl    string            // current music src
+	m4a        string            // "http://" + apsvr + ".vvvdj.com/face/" + file + ".mp4"
+	source     *goquery.Document // current music page source
 }
 
 func NewRadio(radioId string) *Radio {
@@ -38,26 +39,72 @@ func (r *Radio) GetPlayUrls() map[string]string {
 	if "" == r.musicIds {
 		r.getJsVarsViaOttoService()
 	}
+	r.getMusicNames()
 	musicIds := strings.Split(r.musicIds, ",")
 	length := len(musicIds)
 	playUrls := make(map[string]string, length)
 
-	// var wg sync.WaitGroup
-	// wg.Add(length)
+	var wg sync.WaitGroup
+	wg.Add(length)
 	for _, musicId := range musicIds {
-		// go func(musicId string) {
-		// 	defer wg.Done()
-		radio := NewRadio(r.radioId)
-		radio.musicUrl += fmt.Sprintf("?musicid=%s", musicId)
-		radio.getM4a()
-		playUrls[musicId] = radio.m4a
-		// }(musicId)
+		go func(musicId string) {
+			defer wg.Done()
+			radio := NewRadio(r.radioId)
+			radio.musicUrl += fmt.Sprintf("?musicid=%s", musicId)
+			radio.getM4a()
+			playUrls[musicId] = radio.m4a
+			if r.playingId == musicId {
+				r.m4a = radio.m4a
+			}
+		}(musicId)
 	}
-	// wg.Wait()
+	wg.Wait()
 
 	r.playUrls = playUrls
 
 	return r.playUrls
+}
+
+func (r *Radio) getMusicNames() {
+	c := my_request.NewMyClient(false, 30)
+	urlStr := "http://www.vvvdj.com/play/ajax/temp"
+	headers := map[string]string{
+		"X-Requested-With": "XMLHttpRequest",
+	}
+	params := map[string]string{
+		"ids": r.musicIds,
+	}
+	res, err := c.Request(urlStr, "GET", "", nil, headers, params)
+	if nil != err {
+		logrus.Errorf("get music names: %s", err.Error())
+		return
+	}
+	defer res.Body.Close()
+
+	decoder := json.NewDecoder(res.Body)
+	var v string
+	if err := decoder.Decode(&v); nil != err {
+		logrus.Errorf("decode music names 1 return error: %s", err.Error())
+		return
+	}
+
+	decoder = json.NewDecoder(strings.NewReader(v))
+	var vv map[string]interface{}
+	if err := decoder.Decode(&vv); nil != err {
+		logrus.Errorf("decode music names 2 return error: %s", err.Error())
+		return
+	}
+	if float64(200) == vv["Result"] {
+		slices := vv["Data"].([]interface{})
+		musicNames := make(map[string]string, len(slices))
+		for i := range slices {
+			musicName := slices[i].(map[string]interface{})
+			if musicId, ok := musicName["id"]; ok {
+				musicNames[musicId.(string)] = musicName["musicname"].(string)
+			}
+		}
+		r.musicNames = musicNames
+	}
 }
 
 func (r *Radio) getM4a() {
@@ -69,26 +116,6 @@ func (r *Radio) getM4a() {
 }
 
 // get javascript variables
-// @deprecated
-func (r *Radio) getJsVars() {
-	if nil == r.source {
-		r.getSource()
-	}
-	infoScript := r.source.Find("div.radio_box + script").First().Text()
-	if "" != infoScript {
-		vm := myotto.New()
-		result, _ := removeLines(strings.NewReader(infoScript), []int{8, 9, 13})
-		vm.Run(result)
-		fmt.Println(result)
-		r.playingId = vm.GetString("PLAYINGID")
-		r.musicIds = vm.GetString("MUSICID")
-
-		// FIXME got totally wrong result, maybe should have it run in a node.js service
-		r.playUrl = vm.GetString("playurl")
-	}
-}
-
-// get javascript variables
 func (r *Radio) getJsVarsViaOttoService() {
 	if nil == r.source {
 		r.getSource()
@@ -96,8 +123,8 @@ func (r *Radio) getJsVarsViaOttoService() {
 	infoScript := r.source.Find("div.radio_box + script").First().Text()
 	if "" != infoScript {
 		result, _ := removeLines(strings.NewReader(infoScript), []int{8, 9, 13})
-		c := my_request.NewMyClient(false)
-		ottoServiceHost := "http://localhost:9998"
+		c := my_request.NewMyClient(false, 30)
+		ottoServiceHost := "http://do:9998" // https://github.com/zhanglianxin/otto-service
 		payload := strings.NewReader(result)
 		res, err := c.Request(ottoServiceHost, "POST", "", payload, nil, nil)
 		if nil != err {
@@ -125,7 +152,7 @@ func (r *Radio) getJsVarsViaOttoService() {
 
 // get radio page source
 func (r *Radio) getSource() {
-	c := my_request.NewMyClient(false)
+	c := my_request.NewMyClient(false, 30)
 	urlStr := r.musicUrl
 	headers := map[string]string{
 		"Referer": r.host,
